@@ -209,5 +209,5 @@ __marimo__/
 # Custom
 .DS_Store
 .idea
-plots
-tables
+lab2/plots
+lab2/tables
