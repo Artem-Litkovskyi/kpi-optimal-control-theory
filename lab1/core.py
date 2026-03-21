@@ -9,7 +9,7 @@ class BoatOptimization:
         :param target_y: Target Y coordinate
         :param boat_v: Boat speed relative to water
         :param flow_x: Flow velocity along X axis, can be a constant or a function of y
-        :param smart: If True, use optimal control strategy; if False, head directly towards the target
+        :param smart: If True, use improved control strategy; if False, head directly towards the target
         """
 
         self.target_x = target_x
@@ -55,29 +55,43 @@ class BoatOptimization:
         def system(t, state):
             x, y = state
 
-            dist = np.sqrt((self.target_x - x) ** 2 + (self.target_y - y) ** 2)
-
-            if dist == 0:
-                return [0.0, 0.0]
-
             flow = self.flow_x_func(y)
-
-            if self.smart:
-                alpha = np.arctan2(self.target_y - y, self.target_x - x)
-
-                half_sqrt_d = np.sqrt(self.boat_v ** 2 - (flow * np.sin(alpha)) ** 2)
-                net_velocity = flow * np.cos(alpha) + half_sqrt_d
-
-                uy = net_velocity / self.boat_v * np.sin(alpha)
-                ux = - (net_velocity ** 2 - flow ** 2 - self.boat_v ** 2) / (2 * net_velocity * flow)
-            else:
-                ux = (self.target_x - x) / dist
-                uy = (self.target_y - y) / dist
+            ux, uy = control(x, y, flow)
 
             dxdt = flow + self.boat_v * ux
             dydt = self.boat_v * uy
 
             return [dxdt, dydt]
+
+        def control(x, y, flow):
+            dist = np.sqrt((self.target_x - x) ** 2 + (self.target_y - y) ** 2)
+
+            if dist == 0:
+                return 0, 0
+
+            sin_alpha = (self.target_y - y) / dist
+            cos_alpha = (self.target_x - x) / dist
+
+            # Simple control. Takes into account the target position only.
+            if not self.smart:
+                return cos_alpha, sin_alpha
+
+            # Improved control. Takes into account the target position and the flow velocity.
+            if sin_alpha < 0 or cos_alpha < 0:
+                return -1, 0
+
+            required_v = flow * sin_alpha
+
+            if self.boat_v < required_v:
+                return -sin_alpha, cos_alpha
+
+            half_sqrt_d = np.sqrt(np.abs(self.boat_v ** 2 - (flow * sin_alpha) ** 2))
+            net_velocity = flow * cos_alpha + half_sqrt_d
+
+            ux = (net_velocity * cos_alpha - flow) / self.boat_v
+            uy = net_velocity * sin_alpha / self.boat_v
+
+            return ux, uy
 
         def target_reached(t, state):
             x, y = state
