@@ -3,10 +3,19 @@ from scipy.integrate import solve_ivp
 
 
 class BoatOptimization:
-    def __init__(self, target_x, target_y, boat_v, flow_x):
+    def __init__(self, target_x, target_y, boat_v, flow_x, smart=False):
+        """
+        :param target_x: Target X coordinate
+        :param target_y: Target Y coordinate
+        :param boat_v: Boat speed relative to water
+        :param flow_x: Flow velocity along X axis, can be a constant or a function of y
+        :param smart: If True, use optimal control strategy; if False, head directly towards the target
+        """
+
         self.target_x = target_x
         self.target_y = target_y
         self.boat_v = boat_v
+        self.smart = smart
 
         if callable(flow_x):
             self.flow_x_func = flow_x
@@ -51,8 +60,22 @@ class BoatOptimization:
             if dist == 0:
                 return [0.0, 0.0]
 
-            dxdt = self.flow_x_func(y) + self.boat_v * (self.target_x - x) / dist
-            dydt = self.boat_v * (self.target_y - y) / dist
+            flow = self.flow_x_func(y)
+
+            if self.smart:
+                alpha = np.arctan2(self.target_y - y, self.target_x - x)
+
+                half_sqrt_d = np.sqrt(self.boat_v ** 2 - (flow * np.sin(alpha)) ** 2)
+                net_velocity = flow * np.cos(alpha) + half_sqrt_d
+
+                uy = net_velocity / self.boat_v * np.sin(alpha)
+                ux = - (net_velocity ** 2 - flow ** 2 - self.boat_v ** 2) / (2 * net_velocity * flow)
+            else:
+                ux = (self.target_x - x) / dist
+                uy = (self.target_y - y) / dist
+
+            dxdt = flow + self.boat_v * ux
+            dydt = self.boat_v * uy
 
             return [dxdt, dydt]
 
