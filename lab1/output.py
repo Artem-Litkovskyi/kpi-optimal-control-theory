@@ -58,8 +58,10 @@ def create_plot(reach_sol, traj_sol, target_x, target_y, title, filename):
 
     plt.axis('equal')
 
-    plt.xlim(-1, target_x * 1.5)
-    plt.ylim(-1, target_y * 1.5)
+    xlim = (min(0, target_x * 1.5) - 1, max(0, target_x * 1.5) + 1)
+    ylim = (min(0, target_y * 1.5) - 1, max(0, target_y * 1.5) + 1)
+    plt.xlim(*xlim)
+    plt.ylim(*ylim)
 
     plt.tight_layout()
 
